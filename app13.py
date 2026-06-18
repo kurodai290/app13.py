@@ -41,7 +41,7 @@ if os.path.exists(html_path):
     # HTML内の特定の目印（__CHART_DATA__）を選んだ譜面データ（JSON文字列）に置き換える
     game_html = html_content.replace("__CHART_DATA__", json.dumps(selected_chart))
     
-    # 選択が変わったことが分かりやすいように鍵となるキーを渡してコンポーネントを再描画
-    components.html(game_html, height=340, key=selected_key)
+    # 型エラーを引き起こす原因となっていた `key=` 引数を削除し、安全に表示
+    components.html(game_html, height=340)
 else:
     st.error("index.html が見つかりません。")
