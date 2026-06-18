@@ -138,7 +138,6 @@
             if (gameActive) {
                 currentFrame++;
                 
-                // 大量ノーツ時の負荷軽減のため、直近で出現するノーツだけを効率よく配列に移す
                 while(chartData.length > 0 && chartData[0].frame === currentFrame) {
                     notes.push({ x: canvas.width + 20, type: chartData[0].type });
                     chartData.shift();
@@ -162,7 +161,6 @@
                     }
                 }
 
-                // 全ノーツを消化しきったらゲームクリア
                 if (chartData.length === 0 && notes.length === 0) {
                     gameActive = false;
                 }
@@ -193,7 +191,7 @@
                 ctx.font = 'bold 24px Arial';
                 ctx.textAlign = 'center';
                 if (currentFrame === 0) {
-                    ctx.fillText('ボタンを押して演奏開始（音楽なし・1500ノーツ）', canvas.width / 2, canvas.height / 2 + 10);
+                    ctx.fillText('ボタンを押して演奏開始！', canvas.width / 2, canvas.height / 2 + 10);
                 } else {
                     ctx.fillText('演奏終了！お疲れ様でした！', canvas.width / 2, canvas.height / 2 - 30);
                     ctx.font = '20px Arial';
