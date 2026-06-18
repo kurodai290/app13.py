@@ -58,7 +58,7 @@
     </div>
 
     <div id="instructions">
-        ※ 画面内のボタンを押すか、ゲーム画面を一度クリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーで操作できます。
+        ※ 画面内のボタンを押すか、ゲーム画面をクリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーで操作できます。
     </div>
 
     <script>
@@ -68,26 +68,22 @@
         let score = 0, combo = 0, maxCombo = 0, currentFrame = 0, judgmentTimer = 0;
         let gameActive = false, lastJudgment = "";
         let notes = [];
-        let loadedSongKey = ""; // 現在読み込まれている曲のキーを記憶
+        let loadedSongKey = "";
         
         const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
         let chartData = [];
 
-        // 外部（Python）の曲選択を監視して、切り替わったら自動リセットする関数
         function checkSongSync() {
             if (window.CURRENT_SONG_KEY && window.CURRENT_SONG_KEY !== loadedSongKey) {
                 loadedSongKey = window.CURRENT_SONG_KEY;
-                // ディープコピーして新しい譜面データをセット
                 chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
-                // ゲーム状態を完全初期化（選んだ瞬間に前の曲の残骸を消す）
                 score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
                 notes = []; lastJudgment = ""; gameActive = false;
             }
         }
 
         function initGame() {
-            checkSongSync(); // 開始前にもう一度同期
-            // 演奏を始めるために譜面データを再リフレッシュ
+            checkSongSync();
             chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             notes = []; lastJudgment = ""; gameActive = true;
@@ -127,7 +123,6 @@
         }
 
         function gameLoop() {
-            // 毎フレーム、Streamlit側で曲が変わったかどうかをチェック
             checkSongSync();
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -142,9 +137,12 @@
 
             if (gameActive) {
                 currentFrame++;
-                chartData.forEach(item => {
-                    if (item.frame === currentFrame) notes.push({ x: canvas.width + 20, type: item.type });
-                });
+                
+                // 大量ノーツ時の負荷軽減のため、直近で出現するノーツだけを効率よく配列に移す
+                while(chartData.length > 0 && chartData[0].frame === currentFrame) {
+                    notes.push({ x: canvas.width + 20, type: chartData[0].type });
+                    chartData.shift();
+                }
 
                 for (let i = notes.length - 1; i >= 0; i--) {
                     notes[i].x -= NOTE_SPEED;
@@ -164,9 +162,9 @@
                     }
                 }
 
-                if (chartData.length > 0) {
-                    const lastItem = chartData[chartData.length - 1];
-                    if (currentFrame > lastItem.frame + 100 && notes.length === 0) gameActive = false;
+                // 全ノーツを消化しきったらゲームクリア
+                if (chartData.length === 0 && notes.length === 0) {
+                    gameActive = false;
                 }
             }
 
@@ -195,9 +193,9 @@
                 ctx.font = 'bold 24px Arial';
                 ctx.textAlign = 'center';
                 if (currentFrame === 0) {
-                    ctx.fillText('ボタンを押して演奏開始！', canvas.width / 2, canvas.height / 2 + 10);
+                    ctx.fillText('ボタンを押して演奏開始（音楽なし・1500ノーツ）', canvas.width / 2, canvas.height / 2 + 10);
                 } else {
-                    ctx.fillText('演奏終了！', canvas.width / 2, canvas.height / 2 - 30);
+                    ctx.fillText('演奏終了！お疲れ様でした！', canvas.width / 2, canvas.height / 2 - 30);
                     ctx.font = '20px Arial';
                     ctx.fillText(`最終スコア: ${score}  /  最大コンボ: ${maxCombo}`, canvas.width / 2, canvas.height / 2 + 10);
                 }
