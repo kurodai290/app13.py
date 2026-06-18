@@ -1,108 +1,180 @@
 import streamlit as st
-import time
+import streamlit.components.v1 as components
+import base64
 
 st.set_page_config(
-    page_title="太鼓の達人風アプリ",
+    page_title="太鼓の達人風リズムゲーム",
     layout="centered"
 )
 
-st.title("🥁 太鼓の達人風・リズム叩きゲーム")
-st.write("Pythonだけで構築した安全・確実版です。下の大きなボタンを押して叩いてください！")
+st.title("🥁 本格派！太鼓の達人風ミニゲーム")
+st.write("セキュリティ制限を完全に突破しました！画面内のボタンかキーボードで遊べます。")
 
-# --- ゲーム状態の管理（StreamlitのSessionStateを使用） ---
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "combo" not in st.session_state:
-    st.session_state.combo = 0
-if "max_combo" not in st.session_state:
-    st.session_state.max_combo = 0
-if "perfects" not in st.session_state:
-    st.session_state.perfects = 0
-if "misses" not in st.session_state:
-    st.session_state.misses = 0
-if "current_target" not in st.session_state:
-    st.session_state.current_target = "ドン（赤）" # 最初のターゲット
-if "last_judgment" not in st.session_state:
-    st.session_state.last_judgment = "ボタンを押してスタート！"
+# --- HTML/JavaScriptの完全なゲームコード ---
+# 外部ファイル読み込みの不具合を避けるため、ここにすべての譜面と描画ロジックを統合しています。
+game_html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Taiko Game</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 5px;
+            overflow: hidden;
+            user-select: none;
+        }
+        #gameContainer { position: relative; width: 100%; max-width: 800px; margin: 0 auto; }
+        canvas {
+            background-color: #222;
+            border: 3px solid #ff4b4b;
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+        }
+        #buttonArea {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .drum-btn {
+            flex: 1;
+            max-width: 150px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px #333;
+        }
+        .drum-btn:active { transform: translateY(4px); box-shadow: none; }
+        .don-btn { background-color: #ff4757; }
+        .ka-btn { background-color: #1e90ff; }
+        #instructions { margin-top: 10px; font-size: 13px; color: #aaa; }
 
-# --- 叩いたときの判定ロジック ---
-def hit_drum(player_input):
-    if player_input == st.session_state.current_target:
-        st.session_state.score += 100
-        st.session_state.combo += 1
-        st.session_state.perfects += 1
-        st.session_state.last_judgment = "良 (Perfect! 🎉)"
-        if st.session_state.combo > st.session_state.max_combo:
-            st.session_state.max_combo = st.session_state.combo
-    else:
-        st.session_state.combo = 0
-        st.session_state.misses += 1
-        st.session_state.last_judgment = "不可 (Miss 😢)"
-    
-    # 次のノーツをランダムで決定（本物の譜面のように展開）
-    import random
-    st.session_state.current_target = random.choice(["ドン（赤）", "カッ（青）"])
+        /* 🎉 結果発表の豪華リザルト画面 */
+        #resultScreen {
+            display: none;
+            background: linear-gradient(135deg, #cc2e2e, #ff6b6b);
+            border: 4px solid #ffd700;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            margin: 15px auto;
+            padding: 20px;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+        }
+        .result-title { font-size: 28px; font-weight: bold; color: #ffd700; margin-bottom: 15px; text-shadow: 2px 2px #000; }
+        .result-stats {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 18px;
+            text-align: left;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        .stat-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #555; }
+        .stat-value { font-weight: bold; color: #fffa65; }
+        .clear-comment { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 20px; }
+        .retry-btn {
+            background-color: #ffd700;
+            color: #111;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px #b39600;
+        }
+        .retry-btn:active { transform: translateY(2px); box-shadow: none; }
+    </style>
+</head>
+<body>
+    <div id="gamePlayArea">
+        <div id="gameContainer">
+            <canvas id="gameCanvas" width="800" height="200"></canvas>
+        </div>
+        <div id="buttonArea">
+            <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
+            <button class="drum-btn don-btn" onclick="triggerHit('don')">ドン (面)</button>
+            <button class="drum-btn don-btn" onclick="triggerHit('don')">ドン (面)</button>
+            <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
+        </div>
+        <div id="instructions">
+            ※ 画面内のボタンを押すか、ゲーム画面を1度クリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーでもドン・カッが打てます。
+        </div>
+    </div>
 
-# --- リセット機能 ---
-def reset_game():
-    st.session_state.score = 0
-    st.session_state.combo = 0
-    st.session_state.max_combo = 0
-    st.session_state.perfects = 0
-    st.session_state.misses = 0
-    st.session_state.current_target = "ドン（赤）"
-    st.session_state.last_judgment = "新しく演奏を開始しました！"
+    <div id="resultScreen">
+        <div class="result-title">🥁 結果発表 🥁</div>
+        <div id="clearComment" class="clear-comment">演奏終了！</div>
+        <div class="result-stats">
+            <div class="stat-line"><span>最終スコア:</span><span id="resScore" class="stat-value">0</span></div>
+            <div class="stat-line"><span>最大コンボ:</span><span id="resCombo" class="stat-value">0</span></div>
+            <div class="stat-line"><span>「良」の数:</span><span id="resPerfect" class="stat-value">0</span></div>
+            <div class="stat-line"><span>「可」の数:</span><span id="resGood" class="stat-value">0</span></div>
+            <div class="stat-line"><span>「不可」の数:</span><span id="resMiss" class="stat-value">0</span></div>
+        </div>
+        <button class="retry-btn" onclick="clickRetry()">もう一度あそぶ</button>
+    </div>
 
-# --- サイドバーの設定 ---
-st.sidebar.header("📊 プレイデータ")
-st.sidebar.metric("最大コンボ数", f"{st.session_state.max_combo} 回")
-st.sidebar.metric("「良」の数", f"{st.session_state.perfects} 打")
-st.sidebar.metric("「不可」の数", f"{st.session_state.misses} 打")
-if st.sidebar.button("スコアをリセットして最初から", on_click=reset_game):
-    pass
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-# --- メイン画面のビジュアル表示 ---
-# 現在叩くべきターゲットを大きく目立たせる演出
-st.markdown("### 👇 次に流れてくる音符はこれだ！")
+        let score = 0, combo = 0, maxCombo = 0, currentFrame = 0, judgmentTimer = 0;
+        let countPerfect = 0, countGood = 0, countMiss = 0;
+        let gameActive = false, lastJudgment = "";
+        let notes = [];
+        let isFirstPlay = true;
+        
+        let laneFlashTimer = 0;
+        let laneFlashType = "";
 
-if st.session_state.current_target == "ドン（赤）":
-    st.markdown(
-        "<h1 style='text-align: center; color: white; background-color: #ff4757; padding: 30px; border-radius: 50px; font-size: 50px; box-shadow: 0 10px #cc2e2e;'>🔴 ドン 🔴</h1>", 
-        unsafe_allow_html=True
-    )
-else:
-    st.markdown(
-        "<h1 style='text-align: center; color: white; background-color: #1e90ff; padding: 30px; border-radius: 50px; font-size: 50px; box-shadow: 0 10px #1070cc;'>🔵 カッ 🔵</h1>", 
-        unsafe_allow_html=True
-    )
+        const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
+        let chartData = [];
 
-st.write("")
-
-# リアルタイム判定メッセージの表示
-if "良" in st.session_state.last_judgment:
-    st.markdown(f"<p style='font-size: 24px; font-weight: bold; color: #fffa65; text-align: center;'>{st.session_state.last_judgment}</p>", unsafe_allow_html=True)
-else:
-    st.markdown(f"<p style='font-size: 24px; font-weight: bold; color: #ff4d4d; text-align: center;'>{st.session_state.last_judgment}</p>", unsafe_allow_html=True)
-
-# スコアと現在のコンボ表示
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader(f"🏆 スコア: {st.session_state.score}")
-with col2:
-    st.subheader(f"🔥 現在: {st.session_state.combo} コンボ")
-
-st.write("---")
-st.write("【操作】画面に表示された色に合わせて、タイミングよく下の正しいボタンを連打してください！")
-
-# --- プレイヤーが叩くための巨大な和太鼓ボタン ---
-btn_col1, btn_col2 = st.columns(2)
-
-with btn_col1:
-    if st.button("🔴 ドンを叩く（面）", use_container_width=True, type="primary"):
-        hit_drum("ドン（赤）")
-        st.rerun()
-
-with btn_col2:
-    if st.button("🔵 カッを叩く（フチ）", use_container_width=True):
-        hit_drum("カッ（青）")
-        st.rerun()
+        // --- イントロ・Aメロ・サビ・ラストまで展開する「千本桜風」の完全本格譜面 ---
+        const originalChart = [
+            {"frame": 60, "type": "don"}, {"frame": 80, "type": "don"}, {"frame": 100, "type": "don"}, {"frame": 120, "type": "don"},
+            {"frame": 140, "type": "ka"}, {"frame": 160, "type": "ka"}, {"frame": 180, "type": "ka"}, {"frame": 200, "type": "ka"},
+            {"frame": 220, "type": "don"}, {"frame": 230, "type": "don"}, {"frame": 240, "type": "ka"}, {"frame": 260, "type": "don"},
+            {"frame": 280, "type": "ka"}, {"frame": 290, "type": "ka"}, {"frame": 300, "type": "don"}, {"frame": 320, "type": "don"},
+            {"frame": 340, "type": "don"}, {"frame": 360, "type": "ka"}, {"frame": 380, "type": "don"}, {"frame": 400, "type": "ka"},
+            {"frame": 420, "type": "don"}, {"frame": 430, "type": "don"}, {"frame": 440, "type": "don"}, {"frame": 460, "type": "ka"},
+            {"frame": 480, "type": "don"}, {"frame": 500, "type": "don"}, {"frame": 520, "type": "ka"}, {"frame": 540, "type": "ka"},
+            {"frame": 560, "type": "don"}, {"frame": 570, "type": "don"}, {"frame": 580, "type": "ka"}, {"frame": 600, "type": "don"},
+            {"frame": 640, "type": "don"}, {"frame": 660, "type": "ka"}, {"frame": 680, "type": "don"}, {"frame": 700, "type": "ka"},
+            {"frame": 720, "type": "don"}, {"frame": 730, "type": "don"}, {"frame": 740, "type": "ka"}, {"frame": 760, "type": "don"},
+            {"frame": 780, "type": "ka"}, {"frame": 790, "type": "ka"}, {"frame": 800, "type": "don"}, {"frame": 820, "type": "don"},
+            {"frame": 840, "type": "ka"}, {"frame": 860, "type": "ka"}, {"frame": 880, "type": "don"}, {"frame": 900, "type": "ka"},
+            {"frame": 920, "type": "don"}, {"frame": 930, "type": "don"}, {"frame": 940, "type": "ka"}, {"frame": 960, "type": "don"},
+            {"frame": 980, "type": "don"}, {"frame": 990, "type": "don"}, {"frame": 1000, "type": "ka"}, {"frame": 1020, "type": "don"},
+            {"frame": 1040, "type": "ka"}, {"frame": 1050, "type": "ka"}, {"frame": 1060, "type": "don"}, {"frame": 1080, "type": "ka"},
+            {"frame": 1100, "type": "don"}, {"frame": 1120, "type": "don"}, {"frame": 1140, "type": "ka"}, {"frame": 1160, "type": "don"},
+            {"frame": 1200, "type": "don"}, {"frame": 1210, "type": "don"}, {"frame": 1220, "type": "ka"}, {"frame": 1240, "type": "don"},
+            {"frame": 1260, "type": "ka"}, {"frame": 1270, "type": "ka"}, {"frame": 1280, "type": "don"}, {"frame": 1300, "type": "don"},
+            {"frame": 1320, "type": "don"}, {"frame": 1340, "type": "ka"}, {"frame": 1360, "type": "don"}, {"frame": 1380, "type": "ka"},
+            {"frame": 1400, "type": "don"}, {"frame": 1410, "type": "don"}, {"frame": 1420, "type": "don"}, {"frame": 1440, "type": "ka"},
+            {"frame": 1460, "type": "don"}, {"frame": 1480, "type": "don"}, {"frame": 1500, "type": "ka"}, {"frame": 1520, "type": "ka"},
+            {"frame": 1540, "type": "don"}, {"frame": 1550, "type": "don"}, {"frame": 1560, "type": "ka"}, {"frame": 1580, "type": "don"},
+            {"frame": 1620, "type": "don"}, {"frame": 1630, "type": "don"}, {"frame": 1640, "type": "don"}, {"frame": 1660, "type": "ka"},
+            {"frame": 1680, "type": "don"}, {"frame": 1690, "type": "ka"}, {"frame": 1700, "type": "don"}, {"frame": 1720, "type": "ka"},
+            {"frame": 1740, "type": "don"}, {"frame": 1750, "type": "don"}, {"frame": 1760, "type": "ka"}, {"frame": 1780, "type": "don"},
+            {"frame": 1800, "type": "ka"}, {"frame": 1810, "type": "ka"}, {"frame": 1820, "type": "don"}, {"frame": 1840, "type": "don"},
+            {"frame": 1860, "type": "don"}, {"frame": 1880, "type": "ka"}, {"frame": 1900, "type": "don"}, {"frame": 1920, "type": "ka"},
+            {"frame": 1940, "type": "don"}, {"frame": 1950, "type": "don"}, {"frame": 1960, "type": "don"}, {"frame": 1980, "type": "ka"},
+            {"frame": 2000, "type": "don"}, {"frame": 2020, "type": "don"}, {"frame": 2040, "type": "ka"}, {"frame": 2060, "type": "ka"},
+            {"frame": 2080, "type": "don"}, {"frame": 2090, "type": "don"}, {"frame": 2100, "type": "ka"}, {"frame": 2120, "type": "don"},
+            {"frame": 2160, "type": "don"}, {"frame": 2170, "type": "don"}, {"frame": 2180, "type": "don"}, {"frame": 2200, "type": "ka"},
+            {"frame": 2220, "type": "don"}, {"frame": 2230, "type": "ka"}, {"frame": 2240, "type": "don"}, {"frame": 2260, "type": "ka"},
+            {"frame": 2280, "type": "don"}, {"frame": 2290, "type": "don"}, {"frame": 2300, "type": "ka"}, {"frame": 2320, "type": "don"},
