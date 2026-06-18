@@ -1,215 +1,132 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# ページの設定
+st.set_page_config(
+    page_title="太鼓の達人風 Streamlitアプリ",
+    layout="centered"
+)
+
+# Streamlitのタイトルと説明文
+st.title("🥁 太鼓の達人風ミニゲーム")
+st.write("Streamlit上で動くリズムゲームです。画面をクリックして開始してください。")
+
+# 埋め込むHTML/JavaScriptコード
+game_html = """
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>太鼓の達人風ミニゲーム</title>
     <style>
         body {
-            background-color: #222;
+            background-color: #111;
             color: #fff;
             font-family: 'Helvetica Neue', Arial, sans-serif;
             text-align: center;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             overflow: hidden;
         }
-        h1 { margin-bottom: 10px; }
-        #gameContainer {
-            position: relative;
-            width: 800px;
-            margin: 0 auto;
-        }
+        #gameContainer { position: relative; width: 100%; max-width: 800px; margin: 0 auto; }
         canvas {
-            background-color: #111;
-            border: 4px solid #fff;
+            background-color: #222;
+            border: 3px solid #ff4b4b;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            width: 100%;
+            height: auto;
         }
-        #instructions {
-            margin-top: 15px;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        .key {
-            background: #444;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid #666;
-        }
+        #instructions { margin-top: 10px; font-size: 14px; color: #aaa; line-height: 1.6; }
+        .key { background: #444; padding: 2px 6px; border-radius: 4px; border: 1px solid #666; color: #fff; }
     </style>
 </head>
 <body>
-
-    <h1>太鼓の達人風ミニゲーム</h1>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="200"></canvas>
     </div>
-
     <div id="instructions">
         【操作方法】<br>
         <span class="key">F</span> または <span class="key">J</span> : <strong>ドン（面・赤）</strong> / 
         <span class="key">D</span> または <span class="key">K</span> : <strong>カッ（フチ・青）</strong><br>
-        画面をクリックするとゲームがスタート（またはリスタート）します。
+        ※ ゲームが動かない場合は、一度ゲーム画面（Canvas内）をクリックしてください。
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // ゲーム状態
-        let score = 0;
-        let combo = 0;
-        let maxCombo = 0;
-        let gameActive = false;
-        let lastJudgment = "";
-        let judgmentTimer = 0;
-
-        // 判定枠の位置
-        const TARGET_X = 150;
-        const TARGET_Y = 100;
-        const TARGET_RADIUS = 30;
-
-        // ノーツ（音符）の配列
+        let score = 0, combo = 0, maxCombo = 0, currentFrame = 0, judgmentTimer = 0;
+        let gameActive = false, lastJudgment = "";
         let notes = [];
-        const NOTE_SPEED = 5;
+        
+        const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
 
-        // 譜面データ（ゲーム開始からのフレーム数とノーツの種類 'don' or 'ka'）
+        // 譜面データ
         const chartData = [
-            { frame: 100, type: 'don' },
-            { frame: 140, type: 'don' },
-            { frame: 180, type: 'ka' },
-            { frame: 220, type: 'don' },
-            { frame: 260, type: 'ka' },
-            { frame: 280, type: 'ka' },
-            { frame: 320, type: 'don' },
-            { frame: 340, type: 'don' },
-            { frame: 360, type: 'don' },
-            { frame: 400, type: 'ka' },
-            { frame: 440, type: 'don' },
-            { frame: 460, type: 'ka' },
-            { frame: 480, type: 'don' },
-            { frame: 540, type: 'don' },
-            { frame: 560, type: 'don' },
-            { frame: 580, type: 'ka' },
-            { frame: 600, type: 'ka' },
-            { frame: 640, type: 'don' }
+            { frame: 80, type: 'don' }, { frame: 120, type: 'don' }, { frame: 160, type: 'ka' },
+            { frame: 200, type: 'don' }, { frame: 240, type: 'ka' }, { frame: 260, type: 'ka' },
+            { frame: 300, type: 'don' }, { frame: 320, type: 'don' }, { frame: 340, type: 'don' },
+            { frame: 380, type: 'ka' }, { frame: 420, type: 'don' }, { frame: 440, type: 'ka' },
+            { frame: 460, type: 'don' }, { frame: 520, type: 'don' }, { frame: 540, type: 'don' },
+            { frame: 560, type: 'ka' }, { frame: 580, type: 'ka' }, { frame: 620, type: 'don' }
         ];
 
-        let currentFrame = 0;
-
-        // ゲーム初期化
         function initGame() {
-            score = 0;
-            combo = 0;
-            maxCombo = 0;
-            currentFrame = 0;
-            notes = [];
-            lastJudgment = "";
-            gameActive = true;
+            score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
+            notes = []; lastJudgment = ""; gameActive = true;
         }
 
-        // キー入力イベント
         window.addEventListener('keydown', (e) => {
             if (!gameActive) return;
-
             let inputType = "";
-            if (e.key === 'f' || e.key === 'j' || e.key === 'F' || e.key === 'J') {
-                inputType = "don";
-            } else if (e.key === 'd' || e.key === 'k' || e.key === 'D' || e.key === 'K') {
-                inputType = "ka";
-            }
-
-            if (inputType !== "") {
-                checkHit(inputType);
-            }
+            if (e.key === 'f' || e.key === 'j' || e.key === 'F' || e.key === 'J') inputType = "don";
+            else if (e.key === 'd' || e.key === 'k' || e.key === 'D' || e.key === 'K') inputType = "ka";
+            if (inputType !== "") checkHit(inputType);
         });
 
-        // クリックでスタート
-        canvas.addEventListener('click', () => {
-            if (!gameActive) {
-                initGame();
-            }
-        });
+        canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
 
-        // 叩いたときの判定ロジック
         function checkHit(type) {
             if (notes.length === 0) return;
-
-            // 一番左にある（判定枠に最も近い）ノーツを取得
             let closestNote = notes[0];
             let distance = Math.abs(closestNote.x - TARGET_X);
 
-            // 判定幅（ピクセル単位）
             if (distance < 50) {
                 if (closestNote.type === type) {
-                    if (distance <= 15) {
-                        lastJudgment = "良 (Perfect!)";
-                        score += 100;
-                        combo++;
-                    } else {
-                        lastJudgment = "可 (Good)";
-                        score += 50;
-                        combo++;
-                    }
+                    if (distance <= 15) { lastJudgment = "良 (Perfect!)"; score += 100; combo++; }
+                    else { lastJudgment = "可 (Good)"; score += 50; combo++; }
                     if (combo > maxCombo) maxCombo = combo;
-                } else {
-                    lastJudgment = "不可 (Miss)";
-                    combo = 0;
-                }
-                judgmentTimer = 30; // 30フレーム表示
-                notes.shift(); // 叩いたノーツを消去
+                } else { lastJudgment = "不可 (Miss)"; combo = 0; }
+                judgmentTimer = 30;
+                notes.shift();
             }
         }
 
-        // メインゲームループ
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 背景レーンの描画
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 50, canvas.width, 100);
 
-            // 判定枠の描画
             ctx.beginPath();
             ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
             ctx.strokeStyle = '#666';
             ctx.lineWidth = 4;
             ctx.stroke();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fill();
 
             if (gameActive) {
                 currentFrame++;
-
-                // 譜面データからノーツを生成
                 chartData.forEach(item => {
-                    if (item.frame === currentFrame) {
-                        notes.push({
-                            x: canvas.width + 20,
-                            type: item.type
-                        });
-                    }
+                    if (item.frame === currentFrame) notes.push({ x: canvas.width + 20, type: item.type });
                 });
 
-                // ノーツの移動と描画
                 for (let i = notes.length - 1; i >= 0; i--) {
                     notes[i].x -= NOTE_SPEED;
-
-                    // ノーツの描画
                     ctx.beginPath();
                     ctx.arc(notes[i].x, TARGET_Y, TARGET_RADIUS - 5, 0, Math.PI * 2);
-                    if (notes[i].type === 'don') {
-                        ctx.fillStyle = '#ff4757'; // 赤
-                    } else {
-                        ctx.fillStyle = '#1e90ff'; // 青
-                    }
+                    ctx.fillStyle = notes[i].type === 'don' ? '#ff4757' : '#1e90ff';
                     ctx.fill();
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // 画面外（判定枠を通り過ぎた）ノーツの自動見逃し処理
                     if (notes[i].x < TARGET_X - 60) {
                         notes.splice(i, 1);
                         lastJudgment = "不可 (Miss)";
@@ -218,14 +135,10 @@
                     }
                 }
 
-                // 全てのノーツが流れて終了判定
                 const lastItem = chartData[chartData.length - 1];
-                if (currentFrame > lastItem.frame + 100 && notes.length === 0) {
-                    gameActive = false;
-                }
+                if (currentFrame > lastItem.frame + 100 && notes.length === 0) gameActive = false;
             }
 
-            // UI・テキストの描画
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 18px Arial';
             ctx.fillText(`スコア: ${score}`, 20, 35);
@@ -237,42 +150,40 @@
                 ctx.fillText(`${combo} コンボ`, TARGET_X - 40, TARGET_Y - 45);
             }
 
-            // 判定テキストの表示
             if (judgmentTimer > 0) {
                 ctx.font = 'bold 20px Arial';
-                if (lastJudgment.includes('良')) ctx.fillStyle = '#fffa65';
-                else if (lastJudgment.includes('可')) ctx.fillStyle = '#ffffff';
-                else ctx.fillStyle = '#ff4d4d';
-                
+                ctx.fillStyle = lastJudgment.includes('良') ? '#fffa65' : (lastJudgment.includes('可') ? '#fff' : '#ff4d4d');
                 ctx.fillText(lastJudgment, TARGET_X - 40, TARGET_Y + 65);
                 judgmentTimer--;
             }
 
-            // スタート・終了画面のオーバーレイ
             if (!gameActive) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 24px Arial';
                 ctx.textAlign = 'center';
-                
                 if (currentFrame === 0) {
                     ctx.fillText('クリックしてゲームスタート！', canvas.width / 2, canvas.height / 2 + 10);
                 } else {
                     ctx.fillText('ゲーム終了！', canvas.width / 2, canvas.height / 2 - 20);
                     ctx.font = '20px Arial';
                     ctx.fillText(`最終スコア: ${score}  /  最大コンボ: ${maxCombo}`, canvas.width / 2, canvas.height / 2 + 20);
-                    ctx.font = '14px Arial';
-                    ctx.fillText('画面クリックで再挑戦', canvas.width / 2, canvas.height / 2 + 50);
                 }
-                ctx.textAlign = 'left'; // 元に戻す
+                ctx.textAlign = 'left';
             }
-
             requestAnimationFrame(gameLoop);
         }
-
-        // ループ開始
         gameLoop();
     </script>
 </body>
 </html>
+"""
+
+# Streamlit上にHTMLコンポーネントとしてレンダリング (高さを320pxに指定)
+components.html(game_html, height=320)
+
+# サイドバーにちょっとしたおまけ機能（Streamlitらしさ）
+st.sidebar.header("📊 ゲーム設定（サンプル）")
+difficulty = st.sidebar.selectbox("難易度選択 (見た目のみ)", ["かんたん", "ふつう", "むずかしい", "おに"])
+st.sidebar.info(f"現在は「{difficulty}」が選択されています。Streamlitのボタン等とゲームの連動も可能です。")
