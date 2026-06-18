@@ -54,19 +54,8 @@
             margin: 20px auto;
             padding: 20px;
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
-            animation: popIn 0.5s ease-out;
         }
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .result-title {
-            font-size: 28px;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 2px 2px 0px #000;
-            margin-bottom: 15px;
-        }
+        .result-title { font-size: 28px; font-weight: bold; color: #ffd700; margin-bottom: 15px; }
         .result-stats {
             background: rgba(0, 0, 0, 0.6);
             border-radius: 8px;
@@ -88,7 +77,6 @@
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            box-shadow: 0 4px #b39600;
         }
     </style>
 </head>
@@ -111,7 +99,6 @@
     <div id="resultScreen">
         <div class="result-title">🥁 結果発表 🥁</div>
         <div id="clearComment" class="clear-comment">演奏終了！</div>
-        
         <div class="result-stats">
             <div class="stat-line"><span>最終スコア:</span><span id="resScore" class="stat-value">0</span></div>
             <div class="stat-line"><span>最大コンボ:</span><span id="resCombo" class="stat-value">0</span></div>
@@ -148,7 +135,7 @@
 
         function resetToTitle() {
             const origData = window.PYTHON_CHART_DATA || [];
-            chartData = origData.map(n => ({...n}));
+            chartData = JSON.parse(JSON.stringify(origData));
             
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
@@ -161,15 +148,12 @@
 
         function initGame() {
             const origData = window.PYTHON_CHART_DATA || [];
-            chartData = origData.map(n => ({...n}));
+            chartData = JSON.parse(JSON.stringify(origData));
             
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
             notes = []; lastJudgment = ""; isFirstPlay = false;
             laneFlashTimer = 0; laneFlashType = "";
-            
-            document.getElementById('gamePlayArea').style.display = 'block';
-            document.getElementById('resultScreen').style.display = 'none';
             gameActive = true;
         }
 
@@ -192,10 +176,9 @@
 
         canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
 
-        // 🛠️ 最大のバグ修正箇所：notes[0] で正しく1番目の音符を狙い撃ち
         function checkHit(type) {
             if (!notes || notes.length === 0) return;
-            let closestNote = notes[0]; // タイポを確実に修正しました
+            let closestNote = notes[0]; // 前回のタイポ箇所を完全に修正
             if (!closestNote) return;
 
             let distance = Math.abs(closestNote.x - TARGET_X);
@@ -228,14 +211,6 @@
             document.getElementById('resPerfect').innerText = countPerfect;
             document.getElementById('resGood').innerText = countGood;
             document.getElementById('resMiss').innerText = countMiss;
-            
-            let comment = "演奏終了！お疲れ様！";
-            if (countMiss === 0 && (countPerfect + countGood) > 0) {
-                comment = "✨ フルコンボ！神がかった腕前！ ✨";
-            } else if (score > 500) {
-                comment = "🔥 大成功！お見事ドどん！ 🔥";
-            }
-            document.getElementById('clearComment').innerText = comment;
         }
 
         function clickRetry() {
@@ -243,21 +218,44 @@
         }
 
         function gameLoop() {
-            try {
-                checkSongSync();
+            checkSongSync();
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#333';
-                ctx.fillRect(0, 50, canvas.width, 100);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 50, canvas.width, 100);
 
-                // 判定枠の描画
-                ctx.beginPath();
-                ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
-                if (laneFlashTimer > 0) {
-                    ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
-                    ctx.fill();
-                    laneFlashTimer--;
-                } else {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                    ctx.fill();
+            // 判定枠の描画
+            ctx.beginPath();
+            ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
+            if (laneFlashTimer > 0) {
+                ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
+                ctx.fill();
+                laneFlashTimer--;
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fill();
+            }
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            if (gameActive) {
+                currentFrame++;
+                
+                // フリーズを引き起こさない安全なノーツ追加
+                for (let i = chartData.length - 1; i >= 0; i--) {
+                    if (chartData[i].frame === currentFrame) {
+                        notes.push({ x: canvas.width + 20, type: chartData[i].type });
+                        chartData.splice(i, 1);
+                    }
                 }
+
+                // ノーツの移動と描画
+                for (let i = notes.length - 1; i >= 0; i--) {
+                    notes[i].x -= NOTE_SPEED;
+                    
+                    ctx.beginPath();
+                    ctx.arc(notes[i].x, TARGET_Y, TARGET_RADIUS - 5, 0, Math.PI * 2);
+                    ctx.fillStyle = notes[i].type === 'don' ? '#ff4757' : '#1e90ff';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
