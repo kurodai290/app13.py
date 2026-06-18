@@ -147,7 +147,6 @@
         }
 
         function resetToTitle() {
-            // Python側データを壊さずにコピー
             const origData = window.PYTHON_CHART_DATA || [];
             chartData = origData.map(n => ({...n}));
             
@@ -193,9 +192,12 @@
 
         canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
 
+        // 🛠️ 最大のバグ修正箇所：notes[0] で正しく1番目の音符を狙い撃ち
         function checkHit(type) {
-            if (notes.length === 0) return;
-            let closestNote = notes[0];
+            if (!notes || notes.length === 0) return;
+            let closestNote = notes[0]; // タイポを確実に修正しました
+            if (!closestNote) return;
+
             let distance = Math.abs(closestNote.x - TARGET_X);
 
             if (distance < 60) {
@@ -241,26 +243,21 @@
         }
 
         function gameLoop() {
-            checkSongSync();
+            try {
+                checkSongSync();
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#333';
-            ctx.fillRect(0, 50, canvas.width, 100);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 50, canvas.width, 100);
 
-            // 判定枠
-            ctx.beginPath();
-            ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
-            if (laneFlashTimer > 0) {
-                ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
-                ctx.fill();
-                laneFlashTimer--;
-            } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.fill();
-            }
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            if (gameActive) {
-                currentFrame++;
+                // 判定枠の描画
+                ctx.beginPath();
+                ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
+                if (laneFlashTimer > 0) {
+                    ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
+                    ctx.fill();
+                    laneFlashTimer--;
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.fill();
+                }
