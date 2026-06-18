@@ -1,28 +1,194 @@
-import streamlit as st
-import streamlit.components.v1 as components
-import os
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 5px;
+            overflow: hidden;
+            user-select: none;
+        }
+        #gameContainer { position: relative; width: 100%; max-width: 800px; margin: 0 auto; }
+        canvas {
+            background-color: #222;
+            border: 3px solid #ff4b4b;
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+        }
+        #buttonArea {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .drum-btn {
+            flex: 1;
+            max-width: 150px;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px #333;
+        }
+        .drum-btn:active { transform: translateY(4px); box-shadow: none; }
+        .don-btn { background-color: #ff4757; }
+        .ka-btn { background-color: #1e90ff; }
+        #instructions { margin-top: 10px; font-size: 13px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="200"></canvas>
+    </div>
 
-# ページの設定
-st.set_page_config(
-    page_title="太鼓の達人風 Streamlitアプリ",
-    layout="centered"
-)
+    <div id="buttonArea">
+        <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
+        <button class="drum-btn don-btn" onclick="triggerHit('don')">ドン (面)</button>
+        <button class="drum-btn don-btn" onclick="triggerHit('don')">ドン (面)</button>
+        <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
+    </div>
 
-st.title("🥁 太鼓の達人風ミニゲーム")
-st.write("140ノーツ超えのロング譜面を搭載しました！フルコンボを目指しましょう。")
+    <div id="instructions">
+        ※ 画面内のボタンを押すか、ゲーム画面を一度クリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーで操作できます。
+    </div>
 
-# 同一階層にある index.html を読み込む
-html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-if os.path.exists(html_path):
-    with open(html_path, "r", encoding="utf-8") as f:
-        game_html = f.read()
-    
-    # Streamlit上にHTMLを表示
-    components.html(game_html, height=320)
-else:
-    st.error("index.html が見つかりません。同じリポジトリ内に配置してください。")
+        let score = 0, combo = 0, maxCombo = 0, currentFrame = 0, judgmentTimer = 0;
+        let gameActive = false, lastJudgment = "";
+        let notes = [];
+        
+        const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
 
-# サイドバー機能
-st.sidebar.header("📊 ゲーム設定")
-st.sidebar.info("「おに」レベルの140ノーツ譜面がロードされています。")
+        // Python側からここに譜面データが自動注入されます
+        const chartData = __CHART_DATA__;
+
+        function initGame() {
+            score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
+            notes = []; lastJudgment = ""; gameActive = true;
+        }
+
+        function triggerHit(type) {
+            if (!gameActive) {
+                initGame();
+                return;
+            }
+            checkHit(type);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            let inputType = "";
+            if (e.key === 'f' || e.key === 'j' || e.key === 'F' || e.key === 'J') inputType = "don";
+            else if (e.key === 'd' || e.key === 'k' || e.key === 'D' || e.key === 'K') inputType = "ka";
+            if (inputType !== "") triggerHit(inputType);
+        });
+
+        canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
+
+        function checkHit(type) {
+            if (notes.length === 0) return;
+            let closestNote = notes[0];
+            let distance = Math.abs(closestNote.x - TARGET_X);
+
+            if (distance < 60) {
+                if (closestNote.type === type) {
+                    if (distance <= 20) { lastJudgment = "良 (Perfect!)"; score += 100; combo++; }
+                    else { lastJudgment = "可 (Good)"; score += 50; combo++; }
+                    if (combo > maxCombo) maxCombo = combo;
+                } else { lastJudgment = "不可 (Miss)"; combo = 0; }
+                judgmentTimer = 25;
+                notes.shift();
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 50, canvas.width, 100);
+
+            ctx.beginPath();
+            ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            if (gameActive) {
+                currentFrame++;
+                chartData.forEach(item => {
+                    if (item.frame === currentFrame) notes.push({ x: canvas.width + 20, type: item.type });
+                });
+
+                for (let i = notes.length - 1; i >= 0; i--) {
+                    notes[i].x -= NOTE_SPEED;
+                    ctx.beginPath();
+                    ctx.arc(notes[i].x, TARGET_Y, TARGET_RADIUS - 5, 0, Math.PI * 2);
+                    ctx.fillStyle = notes[i].type === 'don' ? '#ff4757' : '#1e90ff';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    if (notes[i].x < TARGET_X - 60) {
+                        notes.splice(i, 1);
+                        lastJudgment = "不可 (Miss)";
+                        combo = 0;
+                        judgmentTimer = 25;
+                    }
+                }
+
+                if (chartData.length > 0) {
+                    const lastItem = chartData[chartData.length - 1];
+                    if (currentFrame > lastItem.frame + 100 && notes.length === 0) gameActive = false;
+                }
+            }
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText(`スコア: ${score}`, 20, 35);
+            ctx.fillText(`最大コンボ: ${maxCombo}`, 200, 35);
+
+            if (combo > 0) {
+                ctx.fillStyle = '#ffa500';
+                ctx.font = 'italic bold 24px Arial';
+                ctx.fillText(`${combo} コンボ`, TARGET_X - 40, TARGET_Y - 45);
+            }
+
+            if (judgmentTimer > 0) {
+                ctx.font = 'bold 20px Arial';
+                ctx.fillStyle = lastJudgment.includes('良') ? '#fffa65' : (lastJudgment.includes('可') ? '#fff' : '#ff4d4d');
+                ctx.fillText(lastJudgment, TARGET_X - 40, TARGET_Y + 65);
+                judgmentTimer--;
+            }
+
+            if (!gameActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                if (currentFrame === 0) {
+                    ctx.fillText('ボタンを押して演奏開始！', canvas.width / 2, canvas.height / 2 + 10);
+                } else {
+                    ctx.fillText('演奏終了！', canvas.width / 2, canvas.height / 2 - 30);
+                    ctx.font = '20px Arial';
+                    ctx.fillText(`最終スコア: ${score}  /  最大コンボ: ${maxCombo}`, canvas.width / 2, canvas.height / 2 + 10);
+                }
+                ctx.textAlign = 'left';
+            }
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+    </script>
+</body>
+</html>
