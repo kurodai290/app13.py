@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <title>Taiko Game</title>
     <style>
         body {
             background-color: #111;
@@ -51,11 +52,11 @@
             border-radius: 12px;
             width: 100%;
             max-width: 600px;
-            margin: 20px auto;
+            margin: 15px auto;
             padding: 20px;
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
         }
-        .result-title { font-size: 28px; font-weight: bold; color: #ffd700; margin-bottom: 15px; }
+        .result-title { font-size: 28px; font-weight: bold; color: #ffd700; margin-bottom: 15px; text-shadow: 2px 2px #000; }
         .result-stats {
             background: rgba(0, 0, 0, 0.6);
             border-radius: 8px;
@@ -77,6 +78,7 @@
             border: none;
             border-radius: 25px;
             cursor: pointer;
+            box-shadow: 0 4px #b39600;
         }
     </style>
 </head>
@@ -92,7 +94,7 @@
             <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
         </div>
         <div id="instructions">
-            ※ ボタンか画面クリック、またはキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーで操作
+            ※ ボタンか画面クリック、またはキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーでドン・カッが打てます。
         </div>
     </div>
 
@@ -117,7 +119,6 @@
         let countPerfect = 0, countGood = 0, countMiss = 0;
         let gameActive = false, lastJudgment = "";
         let notes = [];
-        let loadedSongKey = "";
         let isFirstPlay = true;
         
         let laneFlashTimer = 0;
@@ -126,136 +127,41 @@
         const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
         let chartData = [];
 
-        function checkSongSync() {
-            if (window.CURRENT_SONG_KEY && window.CURRENT_SONG_KEY !== loadedSongKey) {
-                loadedSongKey = window.CURRENT_SONG_KEY;
-                resetToTitle();
-            }
-        }
-
-        function resetToTitle() {
-            const origData = window.PYTHON_CHART_DATA || [];
-            chartData = JSON.parse(JSON.stringify(origData));
-            
-            score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
-            countPerfect = 0; countGood = 0; countMiss = 0;
-            notes = []; lastJudgment = ""; gameActive = false; isFirstPlay = true;
-            laneFlashTimer = 0; laneFlashType = "";
-            
-            document.getElementById('gamePlayArea').style.display = 'block';
-            document.getElementById('resultScreen').style.display = 'none';
-        }
-
-        function initGame() {
-            const origData = window.PYTHON_CHART_DATA || [];
-            chartData = JSON.parse(JSON.stringify(origData));
-            
-            score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
-            countPerfect = 0; countGood = 0; countMiss = 0;
-            notes = []; lastJudgment = ""; isFirstPlay = false;
-            laneFlashTimer = 0; laneFlashType = "";
-            gameActive = true;
-        }
-
-        function triggerHit(type) {
-            if (!gameActive) {
-                initGame();
-                return;
-            }
-            laneFlashType = type;
-            laneFlashTimer = 6;
-            checkHit(type);
-        }
-
-        window.addEventListener('keydown', (e) => {
-            let inputType = "";
-            if (e.key === 'f' || e.key === 'j' || e.key === 'F' || e.key === 'J') inputType = "don";
-            else if (e.key === 'd' || e.key === 'k' || e.key === 'D' || e.key === 'K') inputType = "ka";
-            if (inputType !== "") triggerHit(inputType);
-        });
-
-        canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
-
-        function checkHit(type) {
-            if (!notes || notes.length === 0) return;
-            let closestNote = notes[0]; // 前回のタイポ箇所を完全に修正
-            if (!closestNote) return;
-
-            let distance = Math.abs(closestNote.x - TARGET_X);
-
-            if (distance < 60) {
-                if (closestNote.type === type) {
-                    if (distance <= 20) { 
-                        lastJudgment = "良 (Perfect!)"; score += 100; combo++; countPerfect++; 
-                    } else { 
-                        lastJudgment = "可 (Good)"; score += 50; combo++; countGood++;
-                    }
-                    if (combo > maxCombo) maxCombo = combo;
-                    notes.shift();
-                } else { 
-                    lastJudgment = "不可 (Miss)"; 
-                    combo = 0; 
-                    countMiss++;
-                }
-                judgmentTimer = 25;
-            }
-        }
-
-        function showResults() {
-            gameActive = false;
-            document.getElementById('gamePlayArea').style.display = 'none';
-            document.getElementById('resultScreen').style.display = 'block';
-            
-            document.getElementById('resScore').innerText = score;
-            document.getElementById('resCombo').innerText = maxCombo;
-            document.getElementById('resPerfect').innerText = countPerfect;
-            document.getElementById('resGood').innerText = countGood;
-            document.getElementById('resMiss').innerText = countMiss;
-        }
-
-        function clickRetry() {
-            initGame();
-        }
-
-        function gameLoop() {
-            checkSongSync();
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#333';
-            ctx.fillRect(0, 50, canvas.width, 100);
-
-            // 判定枠の描画
-            ctx.beginPath();
-            ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
-            if (laneFlashTimer > 0) {
-                ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
-                ctx.fill();
-                laneFlashTimer--;
-            } else {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.fill();
-            }
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            if (gameActive) {
-                currentFrame++;
-                
-                // フリーズを引き起こさない安全なノーツ追加
-                for (let i = chartData.length - 1; i >= 0; i--) {
-                    if (chartData[i].frame === currentFrame) {
-                        notes.push({ x: canvas.width + 20, type: chartData[i].type });
-                        chartData.splice(i, 1);
-                    }
-                }
-
-                // ノーツの移動と描画
-                for (let i = notes.length - 1; i >= 0; i--) {
-                    notes[i].x -= NOTE_SPEED;
-                    
-                    ctx.beginPath();
-                    ctx.arc(notes[i].x, TARGET_Y, TARGET_RADIUS - 5, 0, Math.PI * 2);
-                    ctx.fillStyle = notes[i].type === 'don' ? '#ff4757' : '#1e90ff';
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
+        // --- イントロ・Aメロ・サビ・ラストまで展開する「千本桜風」の完全本格譜面（非ループ） ---
+        const originalChart = [
+            {"frame": 60, "type": "don"}, {"frame": 80, "type": "don"}, {"frame": 100, "type": "don"}, {"frame": 120, "type": "don"},
+            {"frame": 140, "type": "ka"}, {"frame": 160, "type": "ka"}, {"frame": 180, "type": "ka"}, {"frame": 200, "type": "ka"},
+            {"frame": 220, "type": "don"}, {"frame": 230, "type": "don"}, {"frame": 240, "type": "ka"}, {"frame": 260, "type": "don"},
+            {"frame": 280, "type": "ka"}, {"frame": 290, "type": "ka"}, {"frame": 300, "type": "don"}, {"frame": 320, "type": "don"},
+            {"frame": 340, "type": "don"}, {"frame": 360, "type": "ka"}, {"frame": 380, "type": "don"}, {"frame": 400, "type": "ka"},
+            {"frame": 420, "type": "don"}, {"frame": 430, "type": "don"}, {"frame": 440, "type": "don"}, {"frame": 460, "type": "ka"},
+            {"frame": 480, "type": "don"}, {"frame": 500, "type": "don"}, {"frame": 520, "type": "ka"}, {"frame": 540, "type": "ka"},
+            {"frame": 560, "type": "don"}, {"frame": 570, "type": "don"}, {"frame": 580, "type": "ka"}, {"frame": 600, "type": "don"},
+            {"frame": 640, "type": "don"}, {"frame": 660, "type": "ka"}, {"frame": 680, "type": "don"}, {"frame": 700, "type": "ka"},
+            {"frame": 720, "type": "don"}, {"frame": 730, "type": "don"}, {"frame": 740, "type": "ka"}, {"frame": 760, "type": "don"},
+            {"frame": 780, "type": "ka"}, {"frame": 790, "type": "ka"}, {"frame": 800, "type": "don"}, {"frame": 820, "type": "don"},
+            {"frame": 840, "type": "ka"}, {"frame": 860, "type": "ka"}, {"frame": 880, "type": "don"}, {"frame": 900, "type": "ka"},
+            {"frame": 920, "type": "don"}, {"frame": 930, "type": "don"}, {"frame": 940, "type": "ka"}, {"frame": 960, "type": "don"},
+            {"frame": 980, "type": "don"}, {"frame": 990, "type": "don"}, {"frame": 1000, "type": "ka"}, {"frame": 1020, "type": "don"},
+            {"frame": 1040, "type": "ka"}, {"frame": 1050, "type": "ka"}, {"frame": 1060, "type": "don"}, {"frame": 1080, "type": "ka"},
+            {"frame": 1100, "type": "don"}, {"frame": 1120, "type": "don"}, {"frame": 1140, "type": "ka"}, {"frame": 1160, "type": "don"},
+            {"frame": 1200, "type": "don"}, {"frame": 1210, "type": "don"}, {"frame": 1220, "type": "ka"}, {"frame": 1240, "type": "don"},
+            {"frame": 1260, "type": "ka"}, {"frame": 1270, "type": "ka"}, {"frame": 1280, "type": "don"}, {"frame": 1300, "type": "don"},
+            {"frame": 1320, "type": "don"}, {"frame": 1340, "type": "ka"}, {"frame": 1360, "type": "don"}, {"frame": 1380, "type": "ka"},
+            {"frame": 1400, "type": "don"}, {"frame": 1410, "type": "don"}, {"frame": 1420, "type": "don"}, {"frame": 1440, "type": "ka"},
+            {"frame": 1460, "type": "don"}, {"frame": 1480, "type": "don"}, {"frame": 1500, "type": "ka"}, {"frame": 1520, "type": "ka"},
+            {"frame": 1540, "type": "don"}, {"frame": 1550, "type": "don"}, {"frame": 1560, "type": "ka"}, {"frame": 1580, "type": "don"},
+            {"frame": 1620, "type": "don"}, {"frame": 1630, "type": "don"}, {"frame": 1640, "type": "don"}, {"frame": 1660, "type": "ka"},
+            {"frame": 1680, "type": "don"}, {"frame": 1690, "type": "ka"}, {"frame": 1700, "type": "don"}, {"frame": 1720, "type": "ka"},
+            {"frame": 1740, "type": "don"}, {"frame": 1750, "type": "don"}, {"frame": 1760, "type": "ka"}, {"frame": 1780, "type": "don"},
+            {"frame": 1800, "type": "ka"}, {"frame": 1810, "type": "ka"}, {"frame": 1820, "type": "don"}, {"frame": 1840, "type": "don"},
+            {"frame": 1860, "type": "don"}, {"frame": 1880, "type": "ka"}, {"frame": 1900, "type": "don"}, {"frame": 1920, "type": "ka"},
+            {"frame": 1940, "type": "don"}, {"frame": 1950, "type": "don"}, {"frame": 1960, "type": "don"}, {"frame": 1980, "type": "ka"},
+            {"frame": 2000, "type": "don"}, {"frame": 2020, "type": "don"}, {"frame": 2040, "type": "ka"}, {"frame": 2060, "type": "ka"},
+            {"frame": 2080, "type": "don"}, {"frame": 2090, "type": "don"}, {"frame": 2100, "type": "ka"}, {"frame": 2120, "type": "don"},
+            {"frame": 2160, "type": "don"}, {"frame": 2170, "type": "don"}, {"frame": 2180, "type": "don"}, {"frame": 2200, "type": "ka"},
+            {"frame": 2220, "type": "don"}, {"frame": 2230, "type": "ka"}, {"frame": 2240, "type": "don"}, {"frame": 2260, "type": "ka"},
+            {"frame": 2280, "type": "don"}, {"frame": 2290, "type": "don"}, {"frame": 2300, "type": "ka"}, {"frame": 2320, "type": "don"},
+            {"frame": 2340, "type": "ka"}, {"frame": 2350, "type": "ka"}, {"frame": 2360, "type": "don"}, {"frame": 2380, "type": "don"},
+            {"frame": 2400, "type": "don"}, {"frame": 2420, "type": "ka"}, {"frame": 2440, "type": "don"}, {"frame": 2460, "type": "ka"},
+            {"frame": 2480, "type": "don"}, {"frame": 2490, "type": "don"}, {"frame": 2500, "type": "don"}, {"frame": 2520, "type": "ka"},
