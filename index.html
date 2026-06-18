@@ -21,7 +21,6 @@
             width: 100%;
             height: auto;
         }
-        /* 画面を直接クリック・タップして遊べるボタン */
         #buttonArea {
             margin-top: 10px;
             display: flex;
@@ -51,7 +50,6 @@
         <canvas id="gameCanvas" width="800" height="200"></canvas>
     </div>
 
-    <!-- キーボードが効かない場合でも、ここを押せば100%動きます -->
     <div id="buttonArea">
         <button class="drum-btn ka-btn" onclick="triggerHit('ka')">カッ (フチ)</button>
         <button class="drum-btn don-btn" onclick="triggerHit('don')">ドン (面)</button>
@@ -60,7 +58,7 @@
     </div>
 
     <div id="instructions">
-        ※ 画面内のボタンを押すか、ゲーム画面を一度クリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーでも操作できます。
+        ※ 画面内のボタンを押すか、ゲーム画面を一度クリックした後にキーボードの <span style="background:#444;padding:2px 4px;">D / F / J / K</span> キーで操作できます。
     </div>
 
     <script>
@@ -70,21 +68,31 @@
         let score = 0, combo = 0, maxCombo = 0, currentFrame = 0, judgmentTimer = 0;
         let gameActive = false, lastJudgment = "";
         let notes = [];
+        let loadedSongKey = ""; // 現在読み込まれている曲のキーを記憶
         
         const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
+        let chartData = [];
 
-        const chartData = [
-            { frame: 80, type: 'don' }, { frame: 120, type: 'don' }, { frame: 160, type: 'ka' },
-            { frame: 200, type: 'don' }, { frame: 240, type: 'ka' }, { frame: 280, type: 'don' },
-            { frame: 320, type: 'don' }, { frame: 340, type: 'ka' }, { frame: 380, type: 'don' }
-        ];
+        // 外部（Python）の曲選択を監視して、切り替わったら自動リセットする関数
+        function checkSongSync() {
+            if (window.CURRENT_SONG_KEY && window.CURRENT_SONG_KEY !== loadedSongKey) {
+                loadedSongKey = window.CURRENT_SONG_KEY;
+                // ディープコピーして新しい譜面データをセット
+                chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
+                // ゲーム状態を完全初期化（選んだ瞬間に前の曲の残骸を消す）
+                score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
+                notes = []; lastJudgment = ""; gameActive = false;
+            }
+        }
 
         function initGame() {
+            checkSongSync(); // 開始前にもう一度同期
+            // 演奏を始めるために譜面データを再リフレッシュ
+            chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             notes = []; lastJudgment = ""; gameActive = true;
         }
 
-        // ボタン・クリック共通の入力処理
         function triggerHit(type) {
             if (!gameActive) {
                 initGame();
@@ -93,7 +101,6 @@
             checkHit(type);
         }
 
-        // キーボード入力
         window.addEventListener('keydown', (e) => {
             let inputType = "";
             if (e.key === 'f' || e.key === 'j' || e.key === 'F' || e.key === 'J') inputType = "don";
@@ -101,7 +108,6 @@
             if (inputType !== "") triggerHit(inputType);
         });
 
-        // 画面クリックでもスタートできるようにする
         canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
 
         function checkHit(type) {
@@ -121,6 +127,9 @@
         }
 
         function gameLoop() {
+            // 毎フレーム、Streamlit側で曲が変わったかどうかをチェック
+            checkSongSync();
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 50, canvas.width, 100);
@@ -155,7 +164,10 @@
                     }
                 }
 
-                if (currentFrame > 500 && notes.length === 0) gameActive = false;
+                if (chartData.length > 0) {
+                    const lastItem = chartData[chartData.length - 1];
+                    if (currentFrame > lastItem.frame + 100 && notes.length === 0) gameActive = false;
+                }
             }
 
             ctx.fillStyle = '#fff';
@@ -183,7 +195,7 @@
                 ctx.font = 'bold 24px Arial';
                 ctx.textAlign = 'center';
                 if (currentFrame === 0) {
-                    ctx.fillText('画面のボタンを押して演奏開始！', canvas.width / 2, canvas.height / 2 + 10);
+                    ctx.fillText('ボタンを押して演奏開始！', canvas.width / 2, canvas.height / 2 + 10);
                 } else {
                     ctx.fillText('演奏終了！', canvas.width / 2, canvas.height / 2 - 30);
                     ctx.font = '20px Arial';
