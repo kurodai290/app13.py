@@ -26,7 +26,7 @@
         "chart": [
             { "frame": 40, "type": "don" }, { "frame": 48, "type": "don" }, { "frame": 56, "type": "don" }, { "frame": 64, "type": "don" },
             { "frame": 72, "type": "ka" }, { "frame": 80, "type": "ka" }, { "frame": 88, "type": "ka" }, { "frame": 96, "type": "ka" },
-            { "frame": 104, "type": "don" }, { "frame: "112", "type": "ka" }, { "frame": 120, "type": "don" }, { "frame": 128, "type": "ka" },
+            { "frame": 104, "type": "don" }, { "frame": 112, "type": "ka" }, { "frame": 120, "type": "don" }, { "frame": 128, "type": "ka" },
             { "frame": 136, "type": "don" }, { "frame": 144, "type": "don" }, { "frame": 152, "type": "don" }, { "frame": 160, "type": "don" },
             { "frame": 168, "type": "don" }, { "frame": 176, "type": "ka" }, { "frame": 184, "type": "don" }, { "frame": 192, "type": "ka" },
             { "frame": 200, "type": "don" }, { "frame": 208, "type": "don" }, { "frame": 216, "type": "ka" }, { "frame": 224, "type": "ka" },
