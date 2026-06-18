@@ -9,9 +9,8 @@ st.set_page_config(
 )
 
 st.title("🥁 太鼓の達人風ミニゲーム")
-st.write("Streamlitのメニューから曲を切り替えて遊べます。")
+st.write("サイドバーから曲を切り替えると、譜面が自動でパッと切り替わります！")
 
-# 各種ファイルのパス取得
 current_dir = os.path.dirname(__file__)
 json_path = os.path.join(current_dir, "songs.json")
 html_path = os.path.join(current_dir, "index.html")
@@ -24,24 +23,30 @@ else:
     st.error("songs.json が見つかりません。")
     st.stop()
 
-# 2. Streamlitのサイドバーで曲を選択
+# 2. サイドバーで曲を選択
 st.sidebar.header("🎵 楽曲選択")
 song_options = {data["title"]: key for key, data in songs_data.items()}
 selected_title = st.sidebar.selectbox("プレイする曲を選んでください", list(song_options.keys()))
 selected_key = song_options[selected_title]
 
-# 選択された譜面データを取得
-selected_chart = songs_data[selected_key]["chart"]
-
-# 3. HTMLファイルの読み込みとデータ埋め込み
+# 3. HTMLファイルの読み込みとデータ更新
 if os.path.exists(html_path):
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     
-    # HTML内の特定の目印（__CHART_DATA__）を選んだ譜面データ（JSON文字列）に置き換える
-    game_html = html_content.replace("__CHART_DATA__", json.dumps(selected_chart))
+    # 選択された曲のデータと、現在の識別キーをHTMLの中に埋め込む
+    chart_json = json.dumps(songs_data[selected_key]["chart"])
     
-    # 型エラーを引き起こす原因となっていた `key=` 引数を削除し、安全に表示
+    # JavaScript側に現在の曲を強制認識させるスクリプトを注入
+    injected_script = f"""
+    <script>
+        window.CURRENT_SONG_KEY = "{selected_key}";
+        window.PYTHON_CHART_DATA = {chart_json};
+    </script>
+    """
+    game_html = html_content.replace("<body>", f"<body>{injected_script}")
+    
+    # エラーを引き起こす key 引数を使わずに表示
     components.html(game_html, height=340)
 else:
     st.error("index.html が見つかりません。")
