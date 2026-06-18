@@ -142,6 +142,10 @@
         let loadedSongKey = "";
         let isFirstPlay = true;
         
+        // ✨ 新設：判定枠を光らせるためのタイマーと種類
+        let laneFlashTimer = 0;
+        let laneFlashType = "";
+
         const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
         let chartData = [];
 
@@ -157,6 +161,7 @@
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
             notes = []; lastJudgment = ""; gameActive = false; isFirstPlay = true;
+            laneFlashTimer = 0; laneFlashType = "";
             
             document.getElementById('gamePlayArea').style.display = 'block';
             document.getElementById('resultScreen').style.display = 'none';
@@ -168,6 +173,7 @@
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
             notes = []; lastJudgment = ""; isFirstPlay = false;
+            laneFlashTimer = 0; laneFlashType = "";
             
             document.getElementById('gamePlayArea').style.display = 'block';
             document.getElementById('resultScreen').style.display = 'none';
@@ -179,6 +185,11 @@
                 initGame();
                 return;
             }
+            
+            // ✨ 叩いた瞬間に光らせるフラグをセット（6フレーム＝約0.1秒間発光）
+            laneFlashType = type;
+            laneFlashTimer = 6;
+
             checkHit(type);
         }
 
@@ -191,26 +202,21 @@
 
         canvas.addEventListener('click', () => { if (!gameActive) initGame(); });
 
-        // 🛠️ 改善：誤打時に音符が消滅しない判定ロジック
         function checkHit(type) {
             if (notes.length === 0) return;
-            let closestNote = notes[0];
+            let closestNote = notes;
             let distance = Math.abs(closestNote.x - TARGET_X);
 
-            // 判定ゾーン（枠の前後60ピクセル以内）に音符があるときだけ反応
             if (distance < 60) {
                 if (closestNote.type === type) {
-                    // 種類が一致していれば、ヒット成功として音符を消去する
                     if (distance <= 20) { 
                         lastJudgment = "良 (Perfect!)"; score += 100; combo++; countPerfect++; 
                     } else { 
                         lastJudgment = "可 (Good)"; score += 50; combo++; countGood++;
                     }
                     if (combo > maxCombo) maxCombo = combo;
-                    notes.shift(); // 正しく叩けたので音符を消す
+                    notes.shift();
                 } else { 
-                    // ❌ 種類が違った場合（誤打）
-                    // 音符は消さずに「不可」だけをカウントする（流れたままにするので、叩き直し可能）
                     lastJudgment = "不可 (Miss)"; 
                     combo = 0; 
                     countMiss++;
@@ -250,14 +256,10 @@
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 50, canvas.width, 100);
 
+            // 🛠️ 改善：判定枠の描画と発光エフェクト
             ctx.beginPath();
             ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            if (gameActive) {
-                currentFrame++;
-                
-                while(chartData.length > 0 && chartData[0].frame === currentFrame) {
-                    notes.push({ x: canvas.width + 20, type: chartData[0].type });
+            
+            if (laneFlashTimer > 0) {
+                // タイマーが作動していれば、ドンなら赤、カッなら青で枠内を塗りつぶす
+                ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
