@@ -1,0 +1,38 @@
+{
+    "senbon": {
+        "title": "千本桜 風 (テンポ：高速・連打重視)",
+        "chart": [
+            { "frame": 40, "type": "don" }, { "frame": 50, "type": "don" }, { "frame": 60, "type": "don" }, { "frame": 70, "type": "don" },
+            { "frame": 80, "type": "ka" }, { "frame": 90, "type": "ka" }, { "frame": 100, "type": "don" }, { "frame": 120, "type": "don" },
+            { "frame": 130, "type": "don" }, { "frame": 140, "type": "ka" }, { "frame": 150, "type": "don" }, { "frame": 160, "type": "ka" },
+            { "frame": 180, "type": "don" }, { "frame": 190, "type": "don" }, { "frame": 200, "type": "don" }, { "frame": 210, "type": "don" },
+            { "frame": 220, "type": "ka" }, { "frame": 230, "type": "ka" }, { "frame": 240, "type": "ka" }, { "frame": 250, "type": "don" },
+            { "frame": 270, "type": "don" }, { "frame": 280, "type": "ka" }, { "frame": 290, "type": "don" }, { "frame": 300, "type": "ka" },
+            { "frame": 310, "type": "don" }, { "frame": 320, "type": "don" }, { "frame": 330, "type": "don" }, { "frame": 350, "type": "don" }
+        ]
+    },
+    "cruel_angel": {
+        "title": "残酷な天使のテーゼ 風 (テンポ：王道・ノリ重視)",
+        "chart": [
+            { "frame": 60, "type": "don" }, { "frame": 80, "type": "don" }, { "frame": 100, "type": "ka" }, { "frame": 120, "type": "don" },
+            { "frame": 140, "type": "don" }, { "frame": 160, "type": "ka" }, { "frame": 180, "type": "ka" }, { "frame": 200, "type": "don" },
+            { "frame": 210, "type": "don" }, { "frame": 220, "type": "don" }, { "frame": 240, "type": "ka" }, { "frame": 260, "type": "don" },
+            { "frame": 280, "type": "ka" }, { "frame": 300, "type": "don" }, { "frame": 320, "type": "ka" }, { "frame": 340, "type": "don" },
+            { "frame": 350, "type": "don" }, { "frame": 360, "type": "ka" }, { "frame": 380, "type": "ka" }, { "frame": 400, "type": "don" }
+        ]
+    },
+    "kurenai": {
+        "title": "紅 風 (テンポ：超高速・おに難易度)",
+        "chart": [
+            { "frame": 40, "type": "don" }, { "frame": 48, "type": "don" }, { "frame": 56, "type": "don" }, { "frame": 64, "type": "don" },
+            { "frame": 72, "type": "ka" }, { "frame": 80, "type": "ka" }, { "frame": 88, "type": "ka" }, { "frame": 96, "type": "ka" },
+            { "frame": 104, "type": "don" }, { "frame: "112", "type": "ka" }, { "frame": 120, "type": "don" }, { "frame": 128, "type": "ka" },
+            { "frame": 136, "type": "don" }, { "frame": 144, "type": "don" }, { "frame": 152, "type": "don" }, { "frame": 160, "type": "don" },
+            { "frame": 168, "type": "don" }, { "frame": 176, "type": "ka" }, { "frame": 184, "type": "don" }, { "frame": 192, "type": "ka" },
+            { "frame": 200, "type": "don" }, { "frame": 208, "type": "don" }, { "frame": 216, "type": "ka" }, { "frame": 224, "type": "ka" },
+            { "frame": 232, "type": "don" }, { "frame": 240, "type": "ka" }, { "frame": 248, "type": "don" }, { "frame": 256, "type": "don" },
+            { "frame": 264, "type": "don" }, { "frame": 272, "type": "don" }, { "frame": 280, "type": "ka" }, { "frame": 288, "type": "ka" },
+            { "frame": 296, "type": "don" }, { "frame": 304, "type": "don" }, { "frame": 312, "type": "don" }, { "frame": 320, "type": "don" }
+        ]
+    }
+}
