@@ -78,13 +78,7 @@
         }
         .stat-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #555; }
         .stat-value { font-weight: bold; color: #fffa65; }
-        .clear-comment {
-            font-size: 22px;
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 20px;
-            text-shadow: 1px 1px 2px #000;
-        }
+        .clear-comment { font-size: 22px; font-weight: bold; color: #fff; margin-bottom: 20px; }
         .retry-btn {
             background-color: #ffd700;
             color: #111;
@@ -96,8 +90,6 @@
             cursor: pointer;
             box-shadow: 0 4px #b39600;
         }
-        .retry-btn:hover { background-color: #ffea65; }
-        .retry-btn:active { transform: translateY(2px); box-shadow: none; }
     </style>
 </head>
 <body>
@@ -118,7 +110,7 @@
 
     <div id="resultScreen">
         <div class="result-title">🥁 結果発表 🥁</div>
-        <div id="clearComment" class="clear-comment">フルコンボ！素晴らしい！</div>
+        <div id="clearComment" class="clear-comment">演奏終了！</div>
         
         <div class="result-stats">
             <div class="stat-line"><span>最終スコア:</span><span id="resScore" class="stat-value">0</span></div>
@@ -127,7 +119,6 @@
             <div class="stat-line"><span>「可」の数:</span><span id="resGood" class="stat-value">0</span></div>
             <div class="stat-line"><span>「不可」の数:</span><span id="resMiss" class="stat-value">0</span></div>
         </div>
-
         <button class="retry-btn" onclick="clickRetry()">もう一度あそぶ</button>
     </div>
 
@@ -156,7 +147,10 @@
         }
 
         function resetToTitle() {
-            chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
+            // Python側データを壊さずにコピー
+            const origData = window.PYTHON_CHART_DATA || [];
+            chartData = origData.map(n => ({...n}));
+            
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
             notes = []; lastJudgment = ""; gameActive = false; isFirstPlay = true;
@@ -167,8 +161,9 @@
         }
 
         function initGame() {
-            checkSongSync();
-            chartData = JSON.parse(JSON.stringify(window.PYTHON_CHART_DATA || []));
+            const origData = window.PYTHON_CHART_DATA || [];
+            chartData = origData.map(n => ({...n}));
+            
             score = 0; combo = 0; maxCombo = 0; currentFrame = 0;
             countPerfect = 0; countGood = 0; countMiss = 0;
             notes = []; lastJudgment = ""; isFirstPlay = false;
@@ -200,7 +195,7 @@
 
         function checkHit(type) {
             if (notes.length === 0) return;
-            let closestNote = notes[0]; // バグ修正：確実に先頭のノーツを取得
+            let closestNote = notes[0];
             let distance = Math.abs(closestNote.x - TARGET_X);
 
             if (distance < 60) {
@@ -235,7 +230,7 @@
             let comment = "演奏終了！お疲れ様！";
             if (countMiss === 0 && (countPerfect + countGood) > 0) {
                 comment = "✨ フルコンボ！神がかった腕前！ ✨";
-            } else if (score > 10000) {
+            } else if (score > 500) {
                 comment = "🔥 大成功！お見事ドどん！ 🔥";
             }
             document.getElementById('clearComment').innerText = comment;
@@ -252,9 +247,9 @@
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 50, canvas.width, 100);
 
+            // 判定枠
             ctx.beginPath();
             ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
-            
             if (laneFlashTimer > 0) {
                 ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
                 ctx.fill();
@@ -263,3 +258,9 @@
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
                 ctx.fill();
             }
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            if (gameActive) {
+                currentFrame++;
