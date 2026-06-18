@@ -142,7 +142,6 @@
         let loadedSongKey = "";
         let isFirstPlay = true;
         
-        // ✨ 新設：判定枠を光らせるためのタイマーと種類
         let laneFlashTimer = 0;
         let laneFlashType = "";
 
@@ -185,11 +184,8 @@
                 initGame();
                 return;
             }
-            
-            // ✨ 叩いた瞬間に光らせるフラグをセット（6フレーム＝約0.1秒間発光）
             laneFlashType = type;
             laneFlashTimer = 6;
-
             checkHit(type);
         }
 
@@ -204,7 +200,7 @@
 
         function checkHit(type) {
             if (notes.length === 0) return;
-            let closestNote = notes;
+            let closestNote = notes[0]; // バグ修正：確実に先頭のノーツを取得
             let distance = Math.abs(closestNote.x - TARGET_X);
 
             if (distance < 60) {
@@ -256,10 +252,14 @@
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 50, canvas.width, 100);
 
-            // 🛠️ 改善：判定枠の描画と発光エフェクト
             ctx.beginPath();
             ctx.arc(TARGET_X, TARGET_Y, TARGET_RADIUS, 0, Math.PI * 2);
             
             if (laneFlashTimer > 0) {
-                // タイマーが作動していれば、ドンなら赤、カッなら青で枠内を塗りつぶす
                 ctx.fillStyle = laneFlashType === 'don' ? 'rgba(255, 71, 87, 0.6)' : 'rgba(30, 144, 255, 0.6)';
+                ctx.fill();
+                laneFlashTimer--;
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fill();
+            }
