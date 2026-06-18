@@ -9,7 +9,7 @@ st.set_page_config(
 
 # Streamlitのタイトルと説明文
 st.title("🥁 太鼓の達人風ミニゲーム")
-st.write("Streamlit上で動くリズムゲームです。画面をクリックして開始してください。")
+st.write("140ノーツ超えのロング譜面を搭載しました！フルコンボを目指しましょう。")
 
 # 埋め込むHTML/JavaScriptコード
 game_html = """
@@ -59,14 +59,64 @@ game_html = """
         
         const TARGET_X = 150, TARGET_Y = 100, TARGET_RADIUS = 30, NOTE_SPEED = 5;
 
-        // 譜面データ
+        // --- 140ノーツ以上の本格的なロング譜面データ ---
+        // 基本テンポ: 20フレームごとに4分音符。10フレームで8分音符。
         const chartData = [
-            { frame: 80, type: 'don' }, { frame: 120, type: 'don' }, { frame: 160, type: 'ka' },
-            { frame: 200, type: 'don' }, { frame: 240, type: 'ka' }, { frame: 260, type: 'ka' },
-            { frame: 300, type: 'don' }, { frame: 320, type: 'don' }, { frame: 340, type: 'don' },
-            { frame: 380, type: 'ka' }, { frame: 420, type: 'don' }, { frame: 440, type: 'ka' },
-            { frame: 460, type: 'don' }, { frame: 520, type: 'don' }, { frame: 540, type: 'don' },
-            { frame: 560, type: 'ka' }, { frame: 580, type: 'ka' }, { frame: 620, type: 'don' }
+            // 【イントロ】シンプルな4つ打ち (ドン・ドン・ドン・ドン)
+            { frame: 80, type: 'don' }, { frame: 100, type: 'don' }, { frame: 120, type: 'don' }, { frame: 140, type: 'don' },
+            { frame: 160, type: 'don' }, { frame: 180, type: 'don' }, { frame: 200, type: 'ka' }, { frame: 220, type: 'ka' },
+            { frame: 240, type: 'don' }, { frame: 260, type: 'ka' }, { frame: 280, type: 'don' }, { frame: 300, type: 'ka' },
+            { frame: 320, type: 'don' }, { frame: 330, type: 'don' }, { frame: 340, type: 'don' }, { frame: 360, type: 'ka' },
+
+            // 【Aメロ】交互打ちや小ジャンプ
+            { frame: 400, type: 'don' }, { frame: 420, type: 'don' }, { frame: 440, type: 'ka' }, { frame: 460, type: 'don' },
+            { frame: 480, type: 'don' }, { frame: 500, type: 'ka' }, { frame: 520, type: 'ka' }, { frame: 540, type: 'don' },
+            { frame: 560, type: 'don' }, { frame: 570, type: 'don' }, { frame: 580, type: 'ka' }, { frame: 600, type: 'don' },
+            { frame: 620, type: 'ka' }, { frame: 630, type: 'ka' }, { frame: 640, type: 'don' }, { frame: 660, type: 'ka' },
+
+            // 【Bメロ】少しリズムが変則的に（タ・タ・タン）
+            { frame: 700, type: 'don' }, { frame: 710, type: 'don' }, { frame: 730, type: 'ka' },
+            { frame: 750, type: 'don' }, { frame: 760, type: 'don' }, { frame: 780, type: 'ka' },
+            { frame: 800, type: 'ka' }, { frame: 810, type: 'ka' }, { frame: 830, type: 'don' },
+            { frame: 850, type: 'don' }, { frame: 860, type: 'ka' }, { frame: 870, type: 'don' }, { frame: 890, type: 'ka' },
+            // サビ前のビルドアップ（ダダダダダダダダ！）
+            { frame: 910, type: 'don' }, { frame: 920, type: 'don' }, { frame: 930, type: 'don' }, { frame: 940, type: 'don' },
+            { frame: 950, type: 'ka' }, { frame: 960, type: 'ka' }, { frame: 970, type: 'ka' }, { frame: 980, type: 'ka' },
+            { frame: 1000, type: 'don' }, { frame: 1010, type: 'don' }, { frame: 1020, type: 'don' }, { frame: 1030, type: 'don' },
+            { frame: 1040, type: 'ka' }, { frame: 1050, type: 'ka' }, { frame: 1060, type: 'don' }, { frame: 1080, type: 'don' },
+
+            // 【サビ第1ウェーブ】盛り上がりポイント
+            { frame: 1120, type: 'don' }, { frame: 1140, type: 'ka' }, { frame: 1160, type: 'don' }, { frame: 1170, type: 'don' }, { frame: 1180, type: 'ka' },
+            { frame: 1200, type: 'don' }, { frame: 1220, type: 'ka' }, { frame: 1240, type: 'don' }, { frame: 1250, type: 'ka' }, { frame: 1260, type: 'don' },
+            { frame: 1280, type: 'ka' }, { frame: 1300, type: 'ka' }, { frame: 1320, type: 'don' }, { frame: 1330, type: 'ka' }, { frame: 1340, type: 'don' },
+            { frame: 1360, type: 'don' }, { frame: 1370, type: 'don' }, { frame: 1380, type: 'ka' }, { frame: 1400, type: 'don' },
+
+            // 【サビ第2ウェーブ】3連打が混ざるラッシュ (ド・ド・カ、カ・カ・ド)
+            { frame: 1440, type: 'don' }, { frame: 1450, type: 'don' }, { frame: 1460, type: 'ka' },
+            { frame: 1480, type: 'don' }, { frame: 1490, type: 'don' }, { frame: 1470, type: 'ka' }, // 補正用
+            { frame: 1510, type: 'ka' }, { frame: 1520, type: 'ka' }, { frame: 1530, type: 'don' },
+            { frame: 1550, type: 'don' }, { frame: 1560, type: 'ka' }, { frame: 1570, type: 'don' }, { frame: 1590, type: 'ka' },
+            { frame: 1610, type: 'don' }, { frame: 1620, type: 'don' }, { frame: 1630, type: 'don' }, { frame: 1650, type: 'ka' },
+            { frame: 1670, type: 'ka' }, { frame: 1680, type: 'ka' }, { frame: 1690, type: 'ka' }, { frame: 1710, type: 'don' },
+
+            // 【怒涛の終盤】複雑なコンビネーション
+            { frame: 1750, type: 'don' }, { frame: 1760, type: 'ka' }, { frame: 1770, type: 'don' },
+            { frame: 1790, type: 'ka' }, { frame: 1800, type: 'don' }, { frame: 1810, type: 'ka' },
+            { frame: 1830, type: 'don' }, { frame: 1840, type: 'don' }, { frame: 1850, type: 'ka' }, { frame: 1860, type: 'ka' },
+            { frame: 1880, type: 'don' }, { frame: 1890, type: 'ka' }, { frame: 1900, type: 'don' }, { frame: 1910, type: 'ka' },
+            { frame: 1930, type: 'don' }, { frame: 1940, type: 'don' }, { frame: 1950, type: 'don' }, { frame: 1960, type: 'don' },
+            { frame: 1970, type: 'ka' }, { frame: 1980, type: 'ka' }, { frame: 1990, type: 'ka' }, { frame: 2000, type: 'ka' },
+
+            // 【ラストスパート】16分音符の高速ラッシュ（ダダダダダダダダドン！）
+            { frame: 2040, type: 'don' }, { frame: 2050, type: 'don' }, { frame: 2060, type: 'don' }, { frame: 2070, type: 'don' },
+            { frame: 2080, type: 'ka' }, { frame: 2090, type: 'ka' }, { frame: 2100, type: 'ka' }, { frame: 2110, type: 'ka' },
+            { frame: 2130, type: 'don' }, { frame: 2140, type: 'ka' }, { frame: 2150, type: 'don' }, { frame: 2160, type: 'ka' },
+            { frame: 2180, type: 'don' }, { frame: 2190, type: 'don' }, { frame: 2200, type: 'don' }, { frame: 2210, type: 'don' },
+            { frame: 2220, type: 'ka' }, { frame: 2230, type: 'ka' }, { frame: 2240, type: 'ka' }, { frame: 2250, type: 'ka' },
+            { frame: 2280, type: 'don' }, { frame: 2290, type: 'don' }, { frame: 2300, type: 'ka' }, { frame: 2310, type: 'ka' },
+            { frame: 2330, type: 'don' }, { frame: 2340, type: 'ka' }, { frame: 2350, type: 'don' }, { frame: 2360, type: 'ka' },
+            // フィニッシュの一撃！
+            { frame: 2420, type: 'don' }
         ];
 
         function initGame() {
@@ -133,57 +183,3 @@ game_html = """
                         combo = 0;
                         judgmentTimer = 30;
                     }
-                }
-
-                const lastItem = chartData[chartData.length - 1];
-                if (currentFrame > lastItem.frame + 100 && notes.length === 0) gameActive = false;
-            }
-
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 18px Arial';
-            ctx.fillText(`スコア: ${score}`, 20, 35);
-            ctx.fillText(`最大コンボ: ${maxCombo}`, 200, 35);
-
-            if (combo > 0) {
-                ctx.fillStyle = '#ffa500';
-                ctx.font = 'italic bold 24px Arial';
-                ctx.fillText(`${combo} コンボ`, TARGET_X - 40, TARGET_Y - 45);
-            }
-
-            if (judgmentTimer > 0) {
-                ctx.font = 'bold 20px Arial';
-                ctx.fillStyle = lastJudgment.includes('良') ? '#fffa65' : (lastJudgment.includes('可') ? '#fff' : '#ff4d4d');
-                ctx.fillText(lastJudgment, TARGET_X - 40, TARGET_Y + 65);
-                judgmentTimer--;
-            }
-
-            if (!gameActive) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 24px Arial';
-                ctx.textAlign = 'center';
-                if (currentFrame === 0) {
-                    ctx.fillText('クリックしてゲームスタート！', canvas.width / 2, canvas.height / 2 + 10);
-                } else {
-                    ctx.fillText('ゲーム終了！', canvas.width / 2, canvas.height / 2 - 20);
-                    ctx.font = '20px Arial';
-                    ctx.fillText(`最終スコア: ${score}  /  最大コンボ: ${maxCombo}`, canvas.width / 2, canvas.height / 2 + 20);
-                }
-                ctx.textAlign = 'left';
-            }
-            requestAnimationFrame(gameLoop);
-        }
-        gameLoop();
-    </script>
-</body>
-</html>
-"""
-
-# Streamlit上にHTMLコンポーネントとしてレンダリング (高さを320pxに指定)
-components.html(game_html, height=320)
-
-# サイドバーにちょっとしたおまけ機能（Streamlitらしさ）
-st.sidebar.header("📊 ゲーム設定（サンプル）")
-difficulty = st.sidebar.selectbox("難易度選択 (見た目のみ)", ["かんたん", "ふつう", "むずかしい", "おに"])
-st.sidebar.info(f"現在は「{difficulty}」が選択されています。Streamlitのボタン等とゲームの連動も可能です。")
